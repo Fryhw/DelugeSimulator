@@ -2,6 +2,9 @@ patches-own [
   elevation
 ]
 
+breed [populations population]
+breed [bateaux bateau]
+
 globals [
   water-height    ;; how high the floods are currently
   raise-water?    ;; true or false, are we ready for the water to go higher?
@@ -15,6 +18,8 @@ globals [
 ;;; SETUP PROCEDURES
 ;;;
 
+
+
 to setup
   clear-all
   set-default-shape turtles "circle"
@@ -23,6 +28,21 @@ to setup
   setup-floods
   color-world
   reset-ticks
+  create-populations 150 [
+    set shape "person graduate"
+    set size 2
+    move-to one-of patches
+    set color red
+
+  ]
+
+  create-bateaux 1 [
+    set shape "sailboat side"
+    set size 15
+    move-to one-of patches
+    set color yellow
+
+  ]
 end
 
 to setup-elevations
@@ -585,6 +605,24 @@ Rectangle -7500403 true true 127 79 172 94
 Polygon -7500403 true true 195 90 240 150 225 180 165 105
 Polygon -7500403 true true 105 90 60 150 75 180 135 105
 
+person graduate
+false
+0
+Circle -16777216 false false 39 183 20
+Polygon -1 true false 50 203 85 213 118 227 119 207 89 204 52 185
+Circle -7500403 true true 110 5 80
+Rectangle -7500403 true true 127 79 172 94
+Polygon -8630108 true false 90 19 150 37 210 19 195 4 105 4
+Polygon -8630108 true false 120 90 105 90 60 195 90 210 120 165 90 285 105 300 195 300 210 285 180 165 210 210 240 195 195 90
+Polygon -1184463 true false 135 90 120 90 150 135 180 90 165 90 150 105
+Line -2674135 false 195 90 150 135
+Line -2674135 false 105 90 150 135
+Polygon -1 true false 135 90 150 105 165 90
+Circle -1 true false 104 205 20
+Circle -1 true false 41 184 20
+Circle -16777216 false false 106 206 18
+Line -2674135 false 208 22 208 57
+
 plant
 false
 0
@@ -596,6 +634,22 @@ Polygon -7500403 true true 165 180 165 210 225 180 255 120 210 135
 Polygon -7500403 true true 135 105 90 60 45 45 75 105 135 135
 Polygon -7500403 true true 165 105 165 135 225 105 255 45 210 60
 Polygon -7500403 true true 135 90 120 45 150 15 180 45 165 90
+
+sailboat side
+false
+0
+Line -16777216 false 0 240 120 210
+Polygon -7500403 true true 0 239 270 254 270 269 240 284 225 299 60 299 15 254
+Polygon -1 true false 15 240 30 195 75 120 105 90 105 225
+Polygon -1 true false 135 75 165 180 150 240 255 240 285 225 255 150 210 105
+Line -16777216 false 105 90 120 60
+Line -16777216 false 120 45 120 240
+Line -16777216 false 150 240 120 240
+Line -16777216 false 135 75 120 60
+Polygon -7500403 true true 120 60 75 45 120 30
+Polygon -16777216 false false 105 90 75 120 30 195 15 240 105 225
+Polygon -16777216 false false 135 75 165 180 150 240 255 240 285 225 255 150 210 105
+Polygon -16777216 false false 0 239 60 299 225 299 240 284 270 269 270 254
 
 square
 false
