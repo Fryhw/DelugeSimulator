@@ -4,11 +4,13 @@ patches-own [
 
 breed [populations population]
 breed [bateaux bateau]
+breed [contours contour]
 
 globals [
   water-height    ;; how high the floods are currently
   raise-water?    ;; true or false, are we ready for the water to go higher?
   ;; The rest of the variables are used only for coloring.
+  saved-count
   flood-1-color
   ocean-color divide-color
   initial-ground-color flooded-ground-colors
@@ -22,6 +24,7 @@ globals [
 
 to setup
   clear-all
+  set saved-count 0
   set-default-shape turtles "circle"
   setup-colors
   setup-elevations
@@ -29,20 +32,27 @@ to setup
   color-world
   reset-ticks
   create-populations 150 [
-    set shape "person graduate"
-    set size 3
-    move-to one-of patches
-    set color red
+    let target-patch one-of patches with [elevation > -3]
 
+    if target-patch != nobody [
+      move-to target-patch
+      set shape "person graduate"
+      set size 2
+      set color red
+    ]
   ]
+create-bateaux 1 [
+  ;; Chercher un patch avec elevation = -3
+  let target-patch one-of patches with [elevation = -3]
 
-  create-bateaux 1 [
+  ;; Si un patch avec elevation = -3 est trouvé, place le bateau dessus
+  if target-patch != nobody [
+    move-to target-patch  ;; Déplace la tortue sur ce patch spécifique
     set shape "sailboat side"
-    set size 15
-    move-to one-of patches
-    set color yellow
-
+    set size 7
+    set color blue
   ]
+]
 end
 
 to setup-elevations
@@ -56,7 +66,7 @@ end
 to setup-floods
   ask patches [
     if elevation = -1 [
-      sprout 1 [ set color flood-1-color ]
+      sprout-contours 1 [ set color flood-1-color ]
     ]
   ]
 end
@@ -68,37 +78,117 @@ end
 to go
   if not any? turtles [ stop ]
   set raise-water? true
-  ask turtles with [breed != populations and breed != bateaux][ flood ]
-  ;;; if raise-water? didn't get set to false when FLOOD happened,
-  ;;; there won't be more flooding at the current water-height, so raise it
+  ask turtles with [breed = contours][ flood-contours ]
+  ask turtles with [breed = populations][ flood-people ]
+  ask turtles with [breed = bateaux] [
+    check-and-save
+  ]
+  ask turtles with [breed = bateaux][ bat ]
+  ask turtles with [breed = bateaux][ tofar ]
   if raise-water? [
     ;; raising by 5 is less accurate than raising by 1, but it's faster
-    set water-height water-height + 5
+    set water-height water-height + 1
   ]
   tick
 end
 
-to flood  ;; turtle procedure
+
+to check-and-save
+  ;; Demander à l'observer de vérifier les tortues proches du bateau
+  ask turtles with [distance myself <= 4 AND breed = populations ] [  ;; Vérifier les tortues dans un rayon de 2 blocs du bateau
+    set saved-count saved-count + 1
+    die  ;; Les tuer
+      ;; Ajouter au compteur de gens sauvés
+  ]
+end
+
+to tofar  ;; turtle procedure
+  ;; Si la tortue est près du bord gauche
+if xcor < 2 [
+
+ setxy 237 ycor  ;; Déplacer la tortue à la coordonnée (237, ycor)
+ fd 2
+]
+  ;; Si la tortue est près du bord droit
+  if xcor > 236 [
+    setxy 1 ycor
+    fd 2
+  ]
+  ;; Si la tortue est près du bord inférieur
+  if ycor < 2 [
+    setxy xcor 116
+    fd 2
+  ]
+  ;; Si la tortue est près du bord supérieur
+  if ycor > 117 [
+    setxy xcor 2
+    fd 2
+  ]
+end
+
+
+
+
+to bat
+  ask turtles with [breed = bateaux] [dep]
+  ask turtles with [breed = bateaux] [dep]
+  ask turtles with [breed = bateaux] [dep]
+  ask turtles with [breed = bateaux] [dep]
+end
+
+to dep
+  ;; Chercher des tortues "contours" dans un rayon de 9 cases
+  let danger-neighbors turtles with [breed = contours and distance myself < 2]
+
+  ;; Si des tortues contours sont proches, on fait une rotation pour les éviter
+  if any? danger-neighbors [
+    let escape-heading (heading + 180 + random 60 - 30)  ;; Tourner dans la direction opposée + un petit random pour varier
+    set heading escape-heading
+  ]
+
+  ;; Rotation aléatoire pour un déplacement naturel
+  rt random 12
+  lt random 12
+
+  ;; Avancer d'une unité
+  fd 1
+end
+
+to flood-people  ;; turtle procedure
   let my-color color
   let unflooded-neighbors neighbors4 with [shade-of? pcolor initial-ground-color and
                                            not any? turtles-here with [color = my-color]]
-    ask populations [
+    if not any? unflooded-neighbors [
+      die
+    ]
+end
+
+to avoid  ;; turtle procedure
+  let my-color color
+  let unflooded-neighbors neighbors4 with [shade-of? pcolor initial-ground-color and
+                                           not any? turtles-here with [color = my-color]]
+    if not any? unflooded-neighbors [
+      die
+    ]
+end
+
+to flood-contours  ;; turtle procedure
+  let my-color color
+  let unflooded-neighbors neighbors4 with [shade-of? pcolor initial-ground-color and
+                                           not any? turtles-here with [color = my-color]]
     if not any? unflooded-neighbors [
        recolor-patch
       die
     ]
 
-  ]
-
   ask unflooded-neighbors with [elevation < water-height] [
-    sprout 1 [
+    sprout-contours 1 [
       set color my-color
       set raise-water? false
     ]
   ]
 end
 
-;;; if the two floods are colliding, we must be on the divide
 
 
 ;;;
@@ -274,11 +364,11 @@ end
 GRAPHICS-WINDOW
 178
 10
-662
-259
+1852
+859
 -1
 -1
-2.0
+7.0
 1
 20
 1
@@ -340,6 +430,17 @@ MONITOR
 water height
 word water-height \" meters\"
 3
+1
+11
+
+MONITOR
+89
+250
+146
+295
+Sauvés
+saved-count
+17
 1
 11
 
