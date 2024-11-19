@@ -30,7 +30,7 @@ to setup
   reset-ticks
   create-populations 150 [
     set shape "person graduate"
-    set size 2
+    set size 3
     move-to one-of patches
     set color red
 
@@ -68,7 +68,7 @@ end
 to go
   if not any? turtles [ stop ]
   set raise-water? true
-  ask turtles [ flood ]
+  ask turtles with [breed != populations and breed != bateaux][ flood ]
   ;;; if raise-water? didn't get set to false when FLOOD happened,
   ;;; there won't be more flooding at the current water-height, so raise it
   if raise-water? [
@@ -82,11 +82,14 @@ to flood  ;; turtle procedure
   let my-color color
   let unflooded-neighbors neighbors4 with [shade-of? pcolor initial-ground-color and
                                            not any? turtles-here with [color = my-color]]
-  if not any? unflooded-neighbors [
-    recolor-patch
-    ;; we won't do any more flooding from this patch
-    die
+    ask populations [
+    if not any? unflooded-neighbors [
+       recolor-patch
+      die
+    ]
+
   ]
+
   ask unflooded-neighbors with [elevation < water-height] [
     sprout 1 [
       set color my-color
