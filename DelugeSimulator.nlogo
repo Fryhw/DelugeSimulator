@@ -6,14 +6,17 @@ breed [populations population]
 breed[lighthouses lighthouse]
 breed[edges edge]
 breed [bateaux bateau]
+breed [contours contour]
 
 globals [
   water-height    ;; how high the floods are currently
   raise-water?    ;; true or false, are we ready for the water to go higher?
   ;; The rest of the variables are used only for coloring.
+  saved-count
   flood-1-color
   ocean-color divide-color
   initial-ground-color flooded-ground-colors
+  total-elevation
 ]
 
 ;;;
@@ -24,6 +27,7 @@ globals [
 
 to setup
   clear-all
+  set saved-count 0
   set-default-shape turtles "circle"
 
   setup-colors
@@ -31,20 +35,30 @@ to setup
   setup-floods
   color-world
   reset-ticks
-  create-populations 150 [
-    set shape "person graduate"
-    set size 2
-    move-to one-of patches
-    set color red
- ]
+  create-populations nb-population [
+    let target-patch one-of patches with [elevation > -3]
 
-  create-bateaux 1 [
-    set shape "sailboat side"
-    set size 15
-    move-to one-of patches
-    set color yellow
-
+    if target-patch != nobody [
+      move-to target-patch
+      set shape "person graduate"
+      set size 2
+      set color red
+    ]
   ]
+create-bateaux nb-boat [
+  ;; Chercher un patch avec elevation = -3
+  let target-patch one-of patches with [elevation = -3]
+
+
+  ;; Si un patch avec elevation = -3 est trouvé, place le bateau dessus
+  if target-patch != nobody [
+    move-to target-patch  ;; Déplace la tortue sur ce patch spécifique
+    set shape "sailboat side"
+    set size 7
+    set color blue
+  ]
+]
+  set total-elevation count patches with [elevation > 0]
 end
 
 to setup-elevations
@@ -58,7 +72,7 @@ end
 to setup-floods
   ask patches [
     if elevation = -1 [
-      sprout 1 [ set color flood-1-color ]
+      sprout-contours 1 [ set color flood-1-color ]
     ]
   ]
 end
@@ -70,34 +84,119 @@ end
 to go
   if not any? turtles [ stop ]
   set raise-water? true
-  ask turtles [ flood ]
-  ;;; if raise-water? didn't get set to false when FLOOD happened,
-  ;;; there won't be more flooding at the current water-height, so raise it
+  ask turtles with [breed = contours][ flood-contours ]
+  ask turtles with [breed = populations][ flood-people ]
+  ask turtles with [breed = bateaux] [
+    check-and-save
+  ]
+  ask turtles with [breed = bateaux][ bat ]
+  ask turtles with [breed = bateaux][ tofar ]
   if raise-water? [
     ;; raising by 5 is less accurate than raising by 1, but it's faster
-    set water-height water-height + 5
+    set water-height water-height + 1
   ]
+
   tick
 end
 
-to flood  ;; turtle procedure
+
+to check-and-save
+  ;; Demander à l'observer de vérifier les tortues proches du bateau
+  ask turtles with [distance myself <= distance-boat AND breed = populations ] [  ;; Vérifier les tortues dans un rayon de 2 blocs du bateau
+    set saved-count saved-count + 1
+    die  ;; Les tuer
+      ;; Ajouter au compteur de gens sauvés
+  ]
+end
+
+to tofar  ;; turtle procedure
+  ;; Si la tortue est près du bord gauche
+if xcor < 2 [
+
+ setxy 237 ycor  ;; Déplacer la tortue à la coordonnée (237, ycor)
+ fd 2
+]
+  ;; Si la tortue est près du bord droit
+  if xcor > 236 [
+    setxy 1 ycor
+    fd 2
+  ]
+  ;; Si la tortue est près du bord inférieur
+  if ycor < 2 [
+    setxy xcor 116
+    fd 2
+  ]
+  ;; Si la tortue est près du bord supérieur
+  if ycor > 117 [
+    setxy xcor 2
+    fd 2
+  ]
+end
+
+
+
+
+to bat
+  ask turtles with [breed = bateaux] [dep]
+
+end
+
+to dep
+  ;; Chercher des tortues "contours" dans un rayon de 9 cases
+  let danger-neighbors turtles with [breed != populations and distance myself < 2 and self != myself]
+
+
+  ;; Si des tortues contours sont proches, on fait une rotation pour les éviter
+  if any? danger-neighbors [
+    let escape-heading (heading + 180 + random 60 - 30)  ;; Tourner dans la direction opposée + un petit random pour varier
+    set heading escape-heading
+  ]
+
+  ;; Rotation aléatoire pour un déplacement naturel
+  rt random 35
+  lt random 35
+
+  ;; Avancer d'une unité
+  fd boat-travel-distance
+end
+
+to flood-people  ;; turtle procedure
   let my-color color
   let unflooded-neighbors neighbors4 with [shade-of? pcolor initial-ground-color and
                                            not any? turtles-here with [color = my-color]]
-  if not any? unflooded-neighbors [
-    recolor-patch
-    ;; we won't do any more flooding from this patch
-    die
-  ]
+    if not any? unflooded-neighbors [
+      die
+    ]
+end
+
+to avoid  ;; turtle procedure
+  let my-color color
+  let unflooded-neighbors neighbors4 with [shade-of? pcolor initial-ground-color and
+                                           not any? turtles-here with [color = my-color]]
+    if not any? unflooded-neighbors [
+      die
+    ]
+end
+
+to flood-contours  ;; turtle procedure
+  let my-color color
+  let unflooded-neighbors neighbors4 with [shade-of? pcolor initial-ground-color and
+                                           not any? turtles-here with [color = my-color]]
+    if not any? unflooded-neighbors [
+       recolor-patch
+      set total-elevation total-elevation - 1
+      die
+
+    ]
+
   ask unflooded-neighbors with [elevation < water-height] [
-    sprout 1 [
+    sprout-contours 1 [
       set color my-color
       set raise-water? false
     ]
   ]
 end
 
-;;; if the two floods are colliding, we must be on the divide
 
 
 ;;;
@@ -168,13 +267,13 @@ end
 ; See Info tab for full copyright and license.
 @#$#@#$#@
 GRAPHICS-WINDOW
-178
+583
 10
-662
-259
+2019
+739
 -1
 -1
-2.0
+6.0
 1
 20
 1
@@ -238,6 +337,160 @@ word water-height \" meters\"
 3
 1
 11
+
+MONITOR
+165
+97
+236
+142
+Sauvés
+saved-count
+17
+1
+11
+
+PLOT
+336
+113
+536
+263
+Elevation
+NIL
+NIL
+0.0
+10.0
+0.0
+10.0
+true
+false
+"" ""
+PENS
+"Elevation" 1.0 0 -16777216 true "" "plot total-elevation"
+
+SLIDER
+31
+162
+203
+195
+nb-boat
+nb-boat
+1
+10
+1.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+31
+196
+203
+229
+nb-population
+nb-population
+50
+500
+300.0
+25
+1
+NIL
+HORIZONTAL
+
+SLIDER
+26
+330
+198
+363
+distance-boat
+distance-boat
+2
+10
+5.0
+1
+1
+NIL
+HORIZONTAL
+
+MONITOR
+183
+36
+311
+81
+nombre de morts
+nb-population - count turtles with [breed = populations] - saved-count
+17
+1
+11
+
+PLOT
+337
+266
+537
+416
+Evolution du nombre de morts
+NIL
+NIL
+0.0
+10.0
+0.0
+10.0
+true
+false
+"" ""
+PENS
+"default" 1.0 0 -16777216 true "" "plot nb-population - count turtles with [breed = populations] - saved-count"
+
+SLIDER
+26
+366
+198
+399
+boat-travel-distance
+boat-travel-distance
+2
+10
+3.0
+1
+1
+NIL
+HORIZONTAL
+
+PLOT
+337
+425
+537
+575
+niveau de l'eau
+NIL
+NIL
+0.0
+10.0
+0.0
+10.0
+true
+false
+"" ""
+PENS
+"default" 1.0 0 -16777216 true "" "plot water-height"
+
+PLOT
+338
+587
+538
+737
+Evolution du nombre de personnes sauvés
+NIL
+NIL
+0.0
+10.0
+0.0
+10.0
+true
+false
+"" ""
+PENS
+"default" 1.0 0 -16777216 true "" "plot saved-count"
 
 @#$#@#$#@
 ## WHAT IS IT?
