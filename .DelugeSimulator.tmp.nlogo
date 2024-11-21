@@ -490,7 +490,7 @@ nb-population
 nb-population
 50
 500
-300.0
+50.0
 25
 1
 NIL
@@ -505,7 +505,7 @@ distance-boat
 distance-boat
 2
 10
-5.0
+2.0
 1
 1
 NIL
@@ -574,10 +574,10 @@ PENS
 "default" 1.0 0 -16777216 true "" "plot water-height"
 
 PLOT
-338
-587
-538
-737
+353
+649
+553
+799
 Evolution du nombre de personnes sauvés
 NIL
 NIL
@@ -589,7 +589,7 @@ true
 false
 "" ""
 PENS
-"default" 1.0 0 -16777216 true "" "plot saved-count"
+"default" 1.0 0 -16777216 true "" "plot sauvés"
 
 @#$#@#$#@
 ## WHAT IS IT?
