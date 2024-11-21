@@ -1,9 +1,10 @@
 patches-own [
   elevation
-  truc
 ]
 
 breed [populations population]
+breed[lighthouses lighthouse]
+breed[edges edge]
 breed [bateaux bateau]
 
 globals [
