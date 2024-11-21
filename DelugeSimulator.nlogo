@@ -1,5 +1,13 @@
 patches-own [
   elevation
+<<<<<<< Updated upstream
+=======
+]
+turtles-own [
+  people-around
+  boat-around
+  importance ;; permettre
+>>>>>>> Stashed changes
 ]
 
 breed [populations population]
@@ -68,10 +76,21 @@ end
 to setup-floods
   ask patches [
     if elevation = -1 [
+<<<<<<< Updated upstream
       sprout-contours 1 [ set color flood-1-color ]
+=======
+      sprout-contours 1 [  ; Crée un contour sur chaque patch avec elevation = -1
+        set color blue  ; Initialement, colore en bleu
+      ]
+>>>>>>> Stashed changes
     ]
   ]
+  ; Choisir aléatoirement une sous-partie des tortues à vérifier
+  ask n-of 30 turtles with [breed = contours] [
+      set color red  ; Change la couleur en rouge si aucun contour n'est proche
+  ]
 end
+
 
 ;;;
 ;;; MAIN PROCEDURES
@@ -84,6 +103,7 @@ to go
   ask turtles with [breed = populations][ flood-people ]
   ask turtles with [breed = bateaux] [
     check-and-save
+<<<<<<< Updated upstream
   ]
   ask turtles with [breed = bateaux][ bat ]
   ask turtles with [breed = bateaux][ tofar ]
@@ -91,21 +111,50 @@ to go
     ;; raising by 5 is less accurate than raising by 1, but it's faster
     set water-height water-height + 1
   ]
+=======
+  ]
+  ask turtles with [breed = bateaux][ bat ]
+  ask turtles with [breed = bateaux][ tofar ]
+  if raise-water? [
+    set water-height water-height + vitesse-eau
+  ]
+>>>>>>> Stashed changes
 
   tick
 end
 
 
+<<<<<<< Updated upstream
 to check-and-save
   ;; Demander à l'observer de vérifier les tortues proches du bateau
   ask turtles with [distance myself <= distance-boat AND breed = populations ] [  ;; Vérifier les tortues dans un rayon de 2 blocs du bateau
     set saved-count saved-count + 1
     die  ;; Les tuer
       ;; Ajouter au compteur de gens sauvés
+=======
+to ad-phare
+  let nearby-contours turtles with [breed = contours and color = flood-1-color]
+  let in 30 - count nearby-contours
+    if count nearby-contours < 30 [
+    ask n-of in turtles with [breed = contours] [
+      set color red  ; Change la couleur en rouge si aucun contour n'est proche
+  ]
+
+  ]
+end
+
+
+to check-and-save
+  ;; Demander à l'observer de vérifier les tortues proches du bateau
+  ask turtles with [distance myself <= distance-boat AND breed = populations ] [
+    set saved-count saved-count + 1
+    die
+>>>>>>> Stashed changes
   ]
 end
 
 to tofar  ;; turtle procedure
+<<<<<<< Updated upstream
   ;; Si la tortue est près du bord gauche
 if xcor < 2 [
 
@@ -118,11 +167,27 @@ if xcor < 2 [
     fd 2
   ]
   ;; Si la tortue est près du bord inférieur
+=======
+
+if xcor < 2 [
+
+ setxy 237 ycor
+ fd 2
+]  if xcor > 236 [
+    setxy 1 ycor
+    fd 2
+  ]
+
+>>>>>>> Stashed changes
   if ycor < 2 [
     setxy xcor 116
     fd 2
   ]
+<<<<<<< Updated upstream
   ;; Si la tortue est près du bord supérieur
+=======
+
+>>>>>>> Stashed changes
   if ycor > 117 [
     setxy xcor 2
     fd 2
@@ -149,8 +214,13 @@ to dep
   ]
 
   ;; Rotation aléatoire pour un déplacement naturel
+<<<<<<< Updated upstream
   rt random 35
   lt random 35
+=======
+  rt random 20
+  lt random 20
+>>>>>>> Stashed changes
 
   ;; Avancer d'une unité
   fd boat-travel-distance
@@ -235,6 +305,7 @@ to-report max-elevation
   report 3000
 end
 
+<<<<<<< Updated upstream
 to-report elevation-data
   ;; -3 is ocean, -1 is the west coast, -1 is the east coast
   report [
@@ -359,6 +430,27 @@ to-report elevation-data
     -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -1 306 672 525 -1 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3
     -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -1 294 858 855 285 -1 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3 -3
   ]
+=======
+to-report load-map
+  file-open "maps/usa.txt"
+  ;;print file-read
+
+  let worldmap []
+  while [not file-at-end?]
+  [
+    set worldmap file-read
+
+
+    ;;show worldm
+
+  ]
+  file-close
+  report worldmap
+  ;show worldmap
+  ;file-close
+
+
+>>>>>>> Stashed changes
 end
 
 
@@ -505,7 +597,11 @@ distance-boat
 distance-boat
 2
 10
+<<<<<<< Updated upstream
 5.0
+=======
+6.0
+>>>>>>> Stashed changes
 1
 1
 NIL
@@ -549,7 +645,11 @@ boat-travel-distance
 boat-travel-distance
 2
 10
+<<<<<<< Updated upstream
 3.0
+=======
+2.0
+>>>>>>> Stashed changes
 1
 1
 NIL
@@ -591,6 +691,24 @@ false
 PENS
 "default" 1.0 0 -16777216 true "" "plot saved-count"
 
+<<<<<<< Updated upstream
+=======
+SLIDER
+96
+418
+268
+451
+vitesse-eau
+vitesse-eau
+1
+10
+6.0
+1
+1
+NIL
+HORIZONTAL
+
+>>>>>>> Stashed changes
 @#$#@#$#@
 ## WHAT IS IT?
 
