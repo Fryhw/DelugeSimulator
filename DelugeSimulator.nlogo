@@ -8,6 +8,17 @@ breed[edges edge]
 breed [bateaux bateau]
 breed [contours contour]
 
+bateaux-own [
+  speed
+  radius
+  radius_color
+]
+
+links-own [
+  dist
+  weight
+]
+
 globals [
   water-height    ;; how high the floods are currently
   raise-water?    ;; true or false, are we ready for the water to go higher?
@@ -44,6 +55,7 @@ to setup
       set size 2
       set color red
     ]
+
   ]
 create-bateaux nb-boat [
   ;; Chercher un patch avec elevation = -3
@@ -56,9 +68,25 @@ create-bateaux nb-boat [
     set shape "sailboat side"
     set size 7
     set color blue
+    set radius 15
+    set radius_color orange
   ]
 ]
   set total-elevation count patches with [elevation > 0]
+  ask n-of 15 contours [
+      set color red
+    set size 3
+
+   ]
+
+  ask bateaux [
+    create-links-with contours with [color = red]
+    ask patches in-radius radius [
+      set pcolor [radius_color] of myself
+    ]
+  ]
+  show one-of links
+
 end
 
 to setup-elevations
