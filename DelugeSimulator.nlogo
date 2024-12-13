@@ -8,6 +8,12 @@ breed[edges edge]
 breed [bateaux bateau]
 breed [contours contour]
 
+
+populations-own [
+  radius
+  target
+]
+
 bateaux-own [
   speed
   radius
@@ -17,6 +23,11 @@ bateaux-own [
 links-own [
   dist
   weight
+]
+
+
+lighthouses-own [
+  linked?
 ]
 
 globals [
@@ -46,6 +57,14 @@ to setup
   setup-floods
   color-world
   reset-ticks
+
+   create-lighthouses 13 [
+    set color red
+    set size 3
+    move-to one-of contours
+    set linked? False
+  ]
+
   create-populations nb-population [
     let target-patch one-of patches with [elevation > -3]
 
@@ -54,6 +73,7 @@ to setup
       set shape "person graduate"
       set size 2
       set color red
+      set radius 15
     ]
 
   ]
@@ -73,19 +93,21 @@ create-bateaux nb-boat [
   ]
 ]
   set total-elevation count patches with [elevation > 0]
-  ask n-of 15 contours [
-      set color red
-    set size 3
+;  ask n-of 15 contours [
+;      set color red
+;    set size 3
+;
+;   ]
 
-   ]
+
 
   ask bateaux [
-    create-links-with contours with [color = red]
+    ;;create-links-with lighthouses
     ask patches in-radius radius [
       set pcolor [radius_color] of myself
     ]
   ]
-  show one-of links
+  ;;show one-of links
 
 end
 
@@ -119,10 +141,13 @@ to go
   ]
   ask turtles with [breed = bateaux][ bat ]
   ask turtles with [breed = bateaux][ tofar ]
+
   if raise-water? [
     ;; raising by 5 is less accurate than raising by 1, but it's faster
     set water-height water-height + 1
   ]
+  radius_detection
+  pop_move
 
   tick
 end
@@ -262,8 +287,71 @@ end
 ;;;
 ;;; THE MAP
 ;;;
+to radius_detection
+   ask bateaux [
+    let target_lighthouses lighthouses in-radius radius with [not linked?]
+    if target_lighthouses != nobody [
+      create-links-with target_lighthouses [
+        set dist end1
+        set color red
+        show dist
+      ]
+      ask target_lighthouses [
+        set linked? True
+      ]
+    ]
 
 
+;    if any? other lighthouses in-radius radius [
+;      create-link-with one-of other lighthouses
+;      ;;set pcolor [radius_color] of myself
+;
+;    ]
+  ]
+
+  ask populations [
+    let target_lighthouses lighthouses in-radius radius
+    if any? target_lighthouses [
+      create-links-with target_lighthouses [
+        set dist end1
+        set color blue
+        ;show dist
+      ]
+      ;face one-of target_lighthouses
+      set target target_lighthouses
+      show target_lighthouses
+    ]
+  ]
+end
+
+to pop_move
+  ask populations [
+    show target
+    ifelse target = 0
+    [fd random 1]
+    [
+    ;; move towards target.  once the distance is less than 1,
+    ;; use move-to to land exactly on the target.
+      if target != 0 [
+        ifelse distance one-of target < 1
+      [ move-to one-of target ]
+      [ fd 1 ]
+      ]
+    ]
+  ]
+
+
+
+end
+
+
+;to delete_radius
+;  ask patches with [pcolor = radius_color ] [
+;
+;  ]
+;
+;end
+;
 to-report load-map
   file-open "maps/usa.txt"
   ;;print file-read
