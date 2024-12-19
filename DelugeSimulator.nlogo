@@ -146,6 +146,7 @@ to go
     ;; raising by 5 is less accurate than raising by 1, but it's faster
     set water-height water-height + 1
   ]
+  replace_lighthouse
   radius_detection
   pop_move
 
@@ -294,7 +295,7 @@ to radius_detection
       create-links-with target_lighthouses [
         set dist end1
         set color red
-        show dist
+        ;;show dist
       ]
       ask target_lighthouses [
         set linked? True
@@ -319,16 +320,18 @@ to radius_detection
       ]
       ;face one-of target_lighthouses
       set target target_lighthouses
-      show target_lighthouses
+      ;;show target_lighthouses
     ]
   ]
 end
 
 to pop_move
   ask populations [
-    show target
+    ;;show target
+    show nearest-lighthouse
+;    show nearest-lighthouse target
     ifelse target = 0
-    [fd random 1]
+    [fd random 2]
     [
     ;; move towards target.  once the distance is less than 1,
     ;; use move-to to land exactly on the target.
@@ -341,6 +344,16 @@ to pop_move
   ]
 
 
+
+end
+
+;; replace lighthouse to new position near current pos
+to replace_lighthouse
+  ask lighthouses [
+    if pcolor = ocean-color or pcolor = flood-1-color or pcolor = flooded-ground-colors or pcolor = divide-color [
+      move-to one-of contours in-radius 15
+    ]
+  ]
 
 end
 
@@ -370,6 +383,13 @@ to-report load-map
   ;show worldmap
   ;file-close
 
+
+end
+
+;; report from agentset, the nearest lighthouse in distance
+to-report nearest-lighthouse
+  let n no-turtles
+  report count n
 
 end
 
@@ -492,7 +512,7 @@ nb-boat
 nb-boat
 1
 10
-1.0
+2.0
 1
 1
 NIL
@@ -507,7 +527,7 @@ nb-population
 nb-population
 50
 500
-300.0
+225.0
 25
 1
 NIL
