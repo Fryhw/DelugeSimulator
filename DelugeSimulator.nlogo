@@ -319,8 +319,9 @@ to radius_detection
         ;show dist
       ]
       ;face one-of target_lighthouses
-      set target target_lighthouses
+      ;;set target target_lighthouses
       ;;show target_lighthouses
+      show my-links
     ]
   ]
 end
@@ -328,17 +329,22 @@ end
 to pop_move
   ask populations [
     ;;show target
-    show nearest-lighthouse
+
 ;    show nearest-lighthouse target
-    ifelse target = 0
-    [fd random 2]
+    ifelse not any? my-links
+    [fd random 5
+     right random 180
+    ]
     [
     ;; move towards target.  once the distance is less than 1,
     ;; use move-to to land exactly on the target.
-      if target != 0 [
-        ifelse distance one-of target < 1
-      [ move-to one-of target ]
-      [ fd 1 ]
+
+      if any? my-links[
+        let nearest nearest-lighthouse my-links
+        ifelse  distance nearest < 1
+        [ move-to nearest]
+        [ face nearest
+        fd 1 ]
       ]
     ]
   ]
@@ -350,8 +356,13 @@ end
 ;; replace lighthouse to new position near current pos
 to replace_lighthouse
   ask lighthouses [
-    if pcolor = ocean-color or pcolor = flood-1-color or pcolor = flooded-ground-colors or pcolor = divide-color [
-      move-to one-of contours in-radius 15
+;    if pcolor = ocean-color or pcolor = flood-1-color or pcolor = flooded-ground-colors or pcolor = divide-color [
+;      move-to one-of contours in-radius 10
+;    ]
+    if not any? turtles-here with [breed = contours][
+      if any? contours in-radius 5 [
+        move-to one-of contours in-radius 5
+      ]
     ]
   ]
 
@@ -387,11 +398,17 @@ to-report load-map
 end
 
 ;; report from agentset, the nearest lighthouse in distance
-to-report nearest-lighthouse
-  let n no-turtles
-  report count n
+to-report nearest-lighthouse [l]
+  ;;let my-agentset  my-list
+  let lh turtle-set [other-end] of l
+  let nearest min-one-of lh [distance myself]
+  ;;let nearest min-one-of [other-end] of l [distance [other-end] of l]
+  report nearest
 
 end
+
+
+
 
 to-report max-elevation
   report 3000
@@ -527,7 +544,7 @@ nb-population
 nb-population
 50
 500
-225.0
+200.0
 25
 1
 NIL
@@ -627,6 +644,21 @@ false
 "" ""
 PENS
 "default" 1.0 0 -16777216 true "" "plot saved-count"
+
+SLIDER
+31
+229
+203
+262
+nb-lighthouses
+nb-lighthouses
+0
+25
+9.0
+1
+1
+NIL
+HORIZONTAL
 
 @#$#@#$#@
 ## WHAT IS IT?
