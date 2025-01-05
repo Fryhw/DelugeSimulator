@@ -12,12 +12,14 @@ breed [contours contour]
 populations-own [
   radius
   target
+  stationned?
 ]
 
 bateaux-own [
   speed
   radius
   radius_color
+  pops
 ]
 
 links-own [
@@ -28,6 +30,7 @@ links-own [
 
 lighthouses-own [
   linked?
+  pops
 ]
 
 globals [
@@ -58,11 +61,12 @@ to setup
   color-world
   reset-ticks
 
-   create-lighthouses 13 [
+   create-lighthouses nb-lighthouses [
     set color red
     set size 3
     move-to one-of contours
     set linked? False
+    set pops []
   ]
 
   create-populations nb-population [
@@ -303,12 +307,15 @@ to radius_detection
     ]
 
 
+
 ;    if any? other lighthouses in-radius radius [
 ;      create-link-with one-of other lighthouses
 ;      ;;set pcolor [radius_color] of myself
 ;
 ;    ]
   ]
+
+
 
   ask populations [
     let target_lighthouses lighthouses in-radius radius
@@ -326,6 +333,19 @@ to radius_detection
   ]
 end
 
+
+
+to pop_station [lh]
+  ask lh [
+    set pops lput myself pops
+  ]
+  hide-turtle
+  ask my-links [
+    hide-link
+  ]
+
+end
+
 to pop_move
   ask populations [
     ;;show target
@@ -341,10 +361,13 @@ to pop_move
 
       if any? my-links[
         let nearest nearest-lighthouse my-links
-        ifelse  distance nearest < 1
-        [ move-to nearest]
+        ifelse  distance nearest > 5
         [ face nearest
         fd 1 ]
+        [if not member? self [pops] of nearest[
+          pop_station nearest
+          ask nearest [show pops]
+        ]]
       ]
     ]
   ]
@@ -544,7 +567,7 @@ nb-population
 nb-population
 50
 500
-200.0
+125.0
 25
 1
 NIL
@@ -654,7 +677,7 @@ nb-lighthouses
 nb-lighthouses
 0
 25
-9.0
+7.0
 1
 1
 NIL
