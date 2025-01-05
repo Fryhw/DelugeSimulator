@@ -63,10 +63,12 @@ to setup
 
    create-lighthouses nb-lighthouses [
     set color red
-    set size 3
+    set size 1
     move-to one-of contours
     set linked? False
     set pops []
+    set label 0
+    set label-color brown
   ]
 
   create-populations nb-population [
@@ -339,7 +341,7 @@ to pop_station [lh]
   ask lh [
     set pops lput myself pops
   ]
-  hide-turtle
+  ;;hide-turtle
   ask my-links [
     hide-link
   ]
@@ -364,10 +366,12 @@ to pop_move
         ifelse  distance nearest > 5
         [ face nearest
         fd 1 ]
-        [if not member? self [pops] of nearest[
+        [ifelse not member? self [pops] of nearest[
           pop_station nearest
           ask nearest [show pops]
-        ]]
+
+        ]
+        [update_lighthouse_size nearest]]
       ]
     ]
   ]
@@ -387,6 +391,14 @@ to replace_lighthouse
         move-to one-of contours in-radius 5
       ]
     ]
+  ]
+
+end
+
+to update_lighthouse_size [lh]
+  ask lh [
+    set size length pops * 0.5
+    set label length pops
   ]
 
 end
