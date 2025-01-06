@@ -68,7 +68,7 @@ to setup
     set linked? False
     set pops []
     set label 0
-    set label-color brown
+    set label-color white
   ]
 
   create-populations nb-population [
@@ -96,6 +96,8 @@ create-bateaux nb-boat [
     set color blue
     set radius 15
     set radius_color orange
+    set label 0
+    set pops no-turtles
   ]
 ]
   set total-elevation count patches with [elevation > 0]
@@ -107,12 +109,12 @@ create-bateaux nb-boat [
 
 
 
-  ask bateaux [
-    ;;create-links-with lighthouses
-    ask patches in-radius radius [
-      set pcolor [radius_color] of myself
-    ]
-  ]
+;  ask bateaux [
+;    ;;create-links-with lighthouses
+;    ask patches in-radius radius [
+;      set pcolor [radius_color] of myself
+;    ]
+;  ]
   ;;show one-of links
 
 end
@@ -164,7 +166,7 @@ to check-and-save
   ;; Demander à l'observer de vérifier les tortues proches du bateau
   ask turtles with [distance myself <= distance-boat AND breed = populations ] [  ;; Vérifier les tortues dans un rayon de 2 blocs du bateau
     set saved-count saved-count + 1
-    die  ;; Les tuer
+    ;;die  ;; Les tuer
       ;; Ajouter au compteur de gens sauvés
   ]
 end
@@ -206,6 +208,8 @@ to dep
   let danger-neighbors turtles with [breed != populations and distance myself < 2 and self != myself]
 
 
+
+
   ;; Si des tortues contours sont proches, on fait une rotation pour les éviter
   if any? danger-neighbors [
     let escape-heading (heading + 180 + random 60 - 30)  ;; Tourner dans la direction opposée + un petit random pour varier
@@ -217,6 +221,12 @@ to dep
   lt random 35
 
   ;; Avancer d'une unité
+   if any? my-links
+  [let nearest nearest-lighthouse my-links
+  show "nearest : "
+  show nearest
+  face nearest
+  embark nearest]
   fd boat-travel-distance
 end
 
@@ -401,6 +411,28 @@ to update_lighthouse_size [lh]
     set label length pops
   ]
 
+end
+
+
+to embark [lh]
+  if distance lh <= [radius] of myself
+  [ show pops
+  let t_pops turtle-set [pops] of lh
+  show "Embark"
+  set pops (turtle-set pops t_pops)
+  show pops
+    ask pops [
+      ;move-to myself
+      die
+      set saved-count saved-count + 1
+
+  ]
+    ask lh [
+      set pops []
+      update_lighthouse_size self
+    ]
+  ]
+  set label count pops
 end
 
 
