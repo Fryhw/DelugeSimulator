@@ -1,12 +1,18 @@
 patches-own [
   elevation
+  waterlvl
+  n
+  step
+  recovered
+  isexit
+  road
+  path
+  savedvalue
 ]
 
-breed [populations population]
-breed[lighthouses lighthouse]
-breed[edges edge]
-breed [bateaux bateau]
-breed [contours contour]
+
+
+
 
 
 populations-own [
@@ -34,32 +40,47 @@ lighthouses-own [
 ]
 
 globals [
-  water-height    ;; how high the floods are currently
-  raise-water?    ;; true or false, are we ready for the water to go higher?
-  ;; The rest of the variables are used only for coloring.
+  water-height
+  raise-water?
   saved-count
   flood-1-color
   ocean-color divide-color
   initial-ground-color flooded-ground-colors
   total-elevation
+  notVisited    ;; Ensemble des patches non visités pour Dijkstra
+  solved
+  search
 ]
+
+
+
+breed [populations population]
+breed[lighthouses lighthouse]
+breed[edges edge]
+breed [bateaux bateau]
+breed [contours contour]
+
 
 ;;;
 ;;; SETUP PROCEDURES
 ;;;
 
-
-
+;; Setup ajusté
 to setup
   clear-all
   set saved-count 0
   set-default-shape turtles "circle"
+
+
+
+  reset
 
   setup-colors
   setup-elevations
   setup-floods
   color-world
   reset-ticks
+
 
    create-lighthouses nb-lighthouses [
     set color red
@@ -71,9 +92,22 @@ to setup
     set label-color white
   ]
 
+
+  set search false
+
+  ;if search = FALSE [
+  ;  reset
+  ;  buildmaze
+  ;]
+  ask patches [
+
+    set waterlvl elevation
+  ]
+
+  ;; Création des populations
+
   create-populations nb-population [
     let target-patch one-of patches with [elevation > -3]
-
     if target-patch != nobody [
       move-to target-patch
       set shape "person graduate"
@@ -83,6 +117,7 @@ to setup
     ]
 
   ]
+
 create-bateaux nb-boat [
   ;; Chercher un patch avec elevation = -3
   let target-patch one-of patches with [elevation = -3]
@@ -98,8 +133,10 @@ create-bateaux nb-boat [
     set radius_color orange
     set label 0
     set pops no-turtles
+
   ]
-]
+  ]
+
   set total-elevation count patches with [elevation > 0]
 ;  ask n-of 15 contours [
 ;      set color red
@@ -118,6 +155,24 @@ create-bateaux nb-boat [
   ;;show one-of links
 
 end
+
+
+
+
+to move-to-nearest-population
+  ask bateaux [
+    let near-neighbors turtles with [breed = populations and distance myself < 500 and self != myself]
+    if any? near-neighbors [
+      ;; Sélectionner le voisin le plus proche
+      let nearest-one min-one-of near-neighbors [distance myself]
+      ;; Récupérer le patch où se trouve ce voisin
+      let target-patch [patch-here] of nearest-one
+
+    ]
+  ]
+end
+
+
 
 to setup-elevations
   ;; Here we're using FOREACH to walk down two lists simultaneously:
@@ -140,55 +195,200 @@ end
 ;;;
 
 to go
+
   if not any? turtles [ stop ]
   set raise-water? true
-  ask turtles with [breed = contours][ flood-contours ]
-  ask turtles with [breed = populations][ flood-people ]
-  ask turtles with [breed = bateaux] [
-    check-and-save
-  ]
-  ask turtles with [breed = bateaux][ bat ]
-  ask turtles with [breed = bateaux][ tofar ]
+  ask contours [ flood-contours ]
+  ask populations [ flood-people ]
+  if dijskstra
+  [if not any? patches with [pcolor = orange or pcolor = red or pcolor = lime][
+  reset
+  buildmaze
 
-  if raise-water? [
-    ;; raising by 5 is less accurate than raising by 1, but it's faster
-    set water-height water-height + 1
+]
+
+  while [search = TRUE ] [solve]
+
+  ask bateaux [
+    orienter-et-avancer-vers-blocs
+      let target_lighthouses lighthouses in-radius radius
+      if any? target_lighthouses [
+
+      embark one-of target_lighthouses
+      ]
+
+
   ]
-  replace_lighthouse
+    replace_lighthouse
   radius_detection
   pop_move
+  ]
 
+
+ ; ask turtles with [breed = bateaux][ bat ]
+ ; ask turtles with [breed = bateaux][ tofar ]
+  if not dijskstra [
+  ask turtles with [breed = bateaux][ bat ]
+  ask turtles with [breed = bateaux][ tofar ]
+  replace_lighthouse
+  radius_detection
+  pop_move]
+
+
+  ;move-to-nearest-population
+    ;; check-and-save
+    ;; bat
+  ;;
+
+
+  if raise-water? [
+    set water-height water-height + 1
+    ask patches with [ waterlvl > 0 ] [set waterlvl waterlvl - 1]
+  ]
   tick
 end
 
 
-to check-and-save
-  ;; Demander à l'observer de vérifier les tortues proches du bateau
-  ask turtles with [distance myself <= distance-boat AND breed = populations ] [  ;; Vérifier les tortues dans un rayon de 2 blocs du bateau
-    set saved-count saved-count + 1
-    ;;die  ;; Les tuer
-      ;; Ajouter au compteur de gens sauvés
+;to bringback
+;  ask patches with [pcolor = black]
+;  [set pcolor savedvalue]
+;end
+
+
+to continuermaze
+  reset
+  set search TRUE
+  ask [patch-here] of one-of contours [set road 3
+  set pcolor red]
+  ;ask one-of patches with [road = 1] [set road 3
+  ;set pcolor red]
+  while [search = TRUE ] [solve]
+
+end
+to buildmaze
+  set search TRUE
+
+  ask one-of turtles with [breed = lighthouses] [
+    ask patch-here [
+      set road 3
+      set pcolor red
+      ask neighbors4 with [ road = 2 ][ set road 1]
+    ]
+
+  ]
+  ask turtles with [breed = bateaux][
+
+  ask patch-here [set road 4
+      set pcolor lime
+    ]
   ]
 end
 
-to tofar  ;; turtle procedure
-  ;; Si la tortue est près du bord gauche
-if xcor < 2 [
+to reset
+  set solved FALSE
+  ask patches [set n 0
+    set savedvalue pcolor
+               set road 1
+               set step 0
+               set plabel ""
+               set recovered FALSE
+              ]
+  ask patches with [waterlvl > 0][set road 2]
+ ; ask patches with [road = 1][
+    ;if any? patches in-radius 1 with [road = 2][
+    ;  set road 2]]
+end
 
- setxy 237 ycor  ;; Déplacer la tortue à la coordonnée (237, ycor)
- fd 2
+
+to orienter-et-avancer-vers-blocs
+  let bloc-cible 0
+
+  ifelse any? patches in-radius 6 with [pcolor = orange or pcolor = red] [
+    set bloc-cible min-one-of patches in-radius 6 with [pcolor = orange or pcolor = red] [distance myself]
+    face bloc-cible
+
+    fd 1
+
+    ask patches in-radius 2 with [pcolor = orange or pcolor = red] [
+      set pcolor savedvalue
+    ]
+    ask patches in-radius 4 with [ pcolor = lime] [
+      set pcolor savedvalue
+    ]
+  ][
+
+        ]
+end
+
+
+to recover-path
+  ifelse any? patches with [road = 4 and any? neighbors4 with [road = 3] ][
+    set search FALSE
+    ask patches with [pcolor = red][set pcolor savedvalue]
+    ask patches with [pcolor = lime][set pcolor savedvalue]
+    stop
+  ] [
+   ask patches with [road = 4 and recovered = FALSE] [
+     if any? neighbors4 with [road = 5] [
+      let tset neighbors4 with [road = 5]
+      ask min-one-of tset [step] [set road 4
+        set path 1
+        set pcolor orange]
+      set recovered TRUE
+
+     ]
+   ]
+
+  ]
+end
+
+to solve
+  ifelse solved [
+    recover-path
+  ] [
+      ask patches with [road = 1][
+        if any? neighbors4 with [road = 3]  or
+           any? neighbors4 with [road = 5] [
+             set road 5
+             let laststep [step] of one-of neighbors4 with [road = 5 or
+                                                            road = 3]
+             set step laststep + 1
+           ]
+      ]
+      ask patches with [road = 4] [
+        if any? neighbors4 with [road = 5 ] [
+          set solved TRUE
+        ]
+      ]
+  ]
+end
+
+
+
+to check-and-save;;Check if people arround the boat (with an distnace) if yes kill them and add point to saved
+  ask turtles with [distance myself <= distance-boat AND breed = populations ] [
+    set saved-count saved-count + 1
+
+    ;;die  ;; Les tuer
+      ;; Ajouter au compteur de gens sauvés
+
+    die
+  ]
+end
+
+to tofar ;; If the boat go to far make it travel across the map
+if xcor < 2 [
+ setxy 235 ycor
+    fd 2
 ]
-  ;; Si la tortue est près du bord droit
-  if xcor > 236 [
-    setxy 1 ycor
+  if xcor > 235 [
+    setxy 2 ycor
     fd 2
   ]
-  ;; Si la tortue est près du bord inférieur
   if ycor < 2 [
-    setxy xcor 116
+    setxy xcor 117
     fd 2
   ]
-  ;; Si la tortue est près du bord supérieur
   if ycor > 117 [
     setxy xcor 2
     fd 2
@@ -200,33 +400,41 @@ end
 
 to bat
   ask turtles with [breed = bateaux] [dep]
-
 end
 
 to dep
   ;; Chercher des tortues "contours" dans un rayon de 9 cases
-  let danger-neighbors turtles with [breed != populations and distance myself < 2 and self != myself]
 
+
+  let danger-neighbors turtles with [breed != populations and distance myself < 4 and self != myself]
+  let save-neighbors turtles with [breed = populations and distance myself < 6 and self != myself and distance myself > 3]
 
 
 
   ;; Si des tortues contours sont proches, on fait une rotation pour les éviter
   if any? danger-neighbors [
-    let escape-heading (heading + 180 + random 60 - 30)  ;; Tourner dans la direction opposée + un petit random pour varier
+    let escape-heading (heading + 180 + random 45 - 45)  ;; Tourner dans la direction opposée + un petit random pour varier
     set heading escape-heading
+    fd boat-travel-distance + 1
   ]
-
+;  if (not any? danger-neighbors) and any? save-neighbors [
+;    let target one-of save-neighbors  ;; Choisir un voisin de sauvetage au hasard
+;    face target  ;; Pointer vers ce voisin
+;  ]
+  if (not any? danger-neighbors) [
   ;; Rotation aléatoire pour un déplacement naturel
-  rt random 35
-  lt random 35
-
+  rt random 20
+  lt random 20
+  ]
   ;; Avancer d'une unité
    if any? my-links
   [let nearest nearest-lighthouse my-links
-  show "nearest : "
+    if ([label] of nearest > 0)
+    [show "nearest : "
   show nearest
   face nearest
-  embark nearest]
+  embark nearest]]
+
   fd boat-travel-distance
 end
 
@@ -239,7 +447,7 @@ to flood-people  ;; turtle procedure
     ]
 end
 
-to avoid  ;; turtle procedure
+to avoid  ;; If people touch water they died
   let my-color color
   let unflooded-neighbors neighbors4 with [shade-of? pcolor initial-ground-color and
                                            not any? turtles-here with [color = my-color]]
@@ -275,7 +483,7 @@ end
 
 to setup-colors
   set flood-1-color yellow + 1
-  set ocean-color black
+  set ocean-color sky
   set divide-color red
   set initial-ground-color brown
   set flooded-ground-colors [magenta blue sky turquoise lime green]
@@ -317,6 +525,7 @@ to radius_detection
         set linked? True
       ]
     ]
+
 
 
 
@@ -415,7 +624,7 @@ end
 
 
 to embark [lh]
-  if distance lh <= [radius] of myself
+  if distance lh <= [radius] of self
   [ show pops
   let t_pops turtle-set [pops] of lh
   show "Embark"
@@ -493,23 +702,25 @@ to-report nearest-lighthouse [l]
 
 end
 
+to-report most-populated-lighthouse [l]
+  let lh turtle-set [other-end] of l
+  let most-pop max-one-of lh [label]
+  report most-pop
+
+end
+
 
 
 
 to-report max-elevation
   report 3000
 end
-
-
-
-; Copyright 2007 Uri Wilensky.
-; See Info tab for full copyright and license.
 @#$#@#$#@
 GRAPHICS-WINDOW
-583
-10
-2019
-739
+419
+20
+1855
+749
 -1
 -1
 6.0
@@ -567,21 +778,21 @@ NIL
 0
 
 MONITOR
-26
-97
-151
-142
-water height
+10
+94
+135
+139
+Hauteur de l'eau
 word water-height \" meters\"
 3
 1
 11
 
 MONITOR
-165
-97
-236
-142
+149
+94
+220
+139
 Sauvés
 saved-count
 17
@@ -589,10 +800,10 @@ saved-count
 11
 
 PLOT
-336
-113
-536
-263
+199
+148
+399
+298
 Elevation
 NIL
 NIL
@@ -607,45 +818,45 @@ PENS
 "Elevation" 1.0 0 -16777216 true "" "plot total-elevation"
 
 SLIDER
-31
-162
-203
-195
+13
+155
+185
+188
 nb-boat
 nb-boat
 1
 10
-2.0
+3.0
 1
 1
 NIL
 HORIZONTAL
 
 SLIDER
-31
-196
-203
-229
+13
+189
+185
+222
 nb-population
 nb-population
 50
 500
-125.0
+175.0
 25
 1
 NIL
 HORIZONTAL
 
 SLIDER
-26
-330
-198
-363
+14
+225
+186
+258
 distance-boat
 distance-boat
-1
+2
 10
-1.0
+4.0
 1
 1
 NIL
@@ -663,10 +874,10 @@ nb-population - count turtles with [breed = populations] - saved-count
 11
 
 PLOT
-337
-266
-537
-416
+200
+301
+400
+451
 Evolution du nombre de morts
 NIL
 NIL
@@ -681,25 +892,25 @@ PENS
 "default" 1.0 0 -16777216 true "" "plot nb-population - count turtles with [breed = populations] - saved-count"
 
 SLIDER
-26
-366
-198
-399
+14
+261
+186
+294
 boat-travel-distance
 boat-travel-distance
-2
+1
 10
-3.0
+1.0
 1
 1
 NIL
 HORIZONTAL
 
 PLOT
-337
-425
-537
-575
+200
+460
+400
+610
 niveau de l'eau
 NIL
 NIL
@@ -714,10 +925,10 @@ PENS
 "default" 1.0 0 -16777216 true "" "plot water-height"
 
 PLOT
-338
-587
-538
-737
+201
+622
+401
+772
 Evolution du nombre de personnes sauvés
 NIL
 NIL
@@ -731,99 +942,98 @@ false
 PENS
 "default" 1.0 0 -16777216 true "" "plot saved-count"
 
+SWITCH
+15
+332
+118
+365
+dijskstra
+dijskstra
+0
+1
+-1000
+
 SLIDER
-31
-229
-203
-262
+15
+297
+187
+330
 nb-lighthouses
 nb-lighthouses
 0
-25
-7.0
+20
+10.0
 1
 1
 NIL
 HORIZONTAL
 
 @#$#@#$#@
-## WHAT IS IT?
+## Résumé / Summary
+
+Dans le cadre de notre projet concernant le module Systeme multi-Agent et Ce document vise à définir le projet Déluge, de définir les limites de ce projet et de proposer un type de modélisation multi-agents pertinentes à un scénario donnée.
+ 
+
+This document aims to define the Deluge project, to define the limits of this
+project and to propose a type of multi-agent modeling relevant to a given
+scenario.
 
 
+## Introduction
 
-Dans le cadre du module SMASE (Systèmes Multi-Agents et Systèmes
-Embarqué), ce document prsésente le projet Déluge, une simulation centrée
-sur un scénario de montée des eaux et de sauvetages en situation de crise.
-Le terrain est modélisé à partir d’une carte (Amerique Du Nord) d’élévation représentant des zones terrestres et aquatiques, où les inondations progressent de manière uniforme.
-
-As part of the SMASE module (Multi-Agent Systems and Embedded Sys-
-tems), this document presents the Déluge project, a simulation focused on a
-scenario of rising water levels and crisis rescue operations.
-The ground is modeled based on an elevation map (map of North America) representing land and aquatic zones, where floods progress uniformly.
-
-## HOW IT WORKS
-
+Le projet Déluge a comme thématique l’élévation du niveau de la mer. Ce thème
+sera abordé sous forme d’un scénario spécifique. Il se déroule de la façon suivante :
 La simulation démarre à partir d’une map basée sur le globe terrestre. Cette
 map représente ainsi les continents avec leurs reliefs et les différents océans. Des
 populations sont présentes sur ces différentes zones terrestre. Elles sont capables de
-se déplacer afin de se rassembler au niveau des phares placés sur les côtes de la carte et échapper aux inondations. Plusieurs bateaux possèdant chacun un radar, sont placés sur cette map et a comme objectif de sauver un maximum de personnes. Les bateaux transitent par les phares afin de maximiser le sauvetage des personnes regroupées autour de ces points stratégiques. Le bateau se déplacera selon une stratégie de déplacement (heuristique).
+se déplacer afin de se rassembler et échapper aux inondations. Un bateau est placé
+sur cette map et a comme objectif de sauver un maximum de personnes. Le
+bateau se déplacera selon une stratégie de déplacement (heuristique).
 
+## But du projet
 
-The simulation begins with a map based on the terrestrial globe. This map represents continents with their topography and the various oceans. Populations are distributed across these land areas and can move to gather around lighthouses placed on the map to escape the floods. Several boats having severals radar are positioned on the coasts on the map with the objective of rescuing as many people as possible. The boats navigate through the lighthouses to maximize the rescue of people gathered at these strategic points. The boats' movements are guided by a displacement strategy (heuristic).This model demonstrates one way to locate a continental divide.  A continental divide separates a continent into two regions based on two bodies of water.  Rain in one region flows into one body of water and rain in the other region flows into the other.
+Nous voulons proposé une manière d’évaluer différentes stratégies de déplace-
+ment du bateau (basé sur différentes heuristiques) et un mode de communication
+idéale pour le sauvetage du plus grand nombre de populations dans notre scénario
+catastrophe.
 
-In the example data, the continent is North America and the two bodies of water used to calculate the divide are the Pacific and Atlantic oceans.
+## Modélisation du terrain
 
-## HOW IT WORKS
+Le terrain est modélisé par une carte d’élévation qui représente les différents
+reliefs pouvant exister. Le terrain basique actuel est la carte des États-Unis. Ces
+cartes sont des ressources en ligne qui ont été importé dans le projet. Le terrain
+est composé de 2 types différents : eau ou terre. L’élévation du terrain détermine
+le type de terrain : une élévation inférieure à 0 correspond à de l’eau. La carte est
+inondée de façon progessive et uniforme changeant donc la nature du terrain au fur
+et à mesure que le temps progresse dans la simulation.
 
-The model is initialized with an elevation map.  Then both oceans systematically rise, bit by bit.  The two floods run towards each other over the continent and eventually crash.  The continental divide is precisely where the two floods collide.
+## Modélisation des agents
 
-## HOW TO USE IT
+On dénombre 2 types d’agents principaux dans notre modélisation : les bateaux
+et populations.
+Un bateau est un véhicule se déplaçant sur l’eau caractérisé par sa position sur
+la carte, sa vitesse, et la stratégie de parcours qu’il utilise. Il possède un champ de
+détection (d’un rayon de x pixels). Ce champ de détection est utilisé pour obtenir
+la localisation des populations, connaître l’état de l’environnement proche et pour
+permettre la communication avec un autre agent (bateau ou population) et notam-
+ment éviter les collisions avec d’autres navires.
 
+Une population est une personne habitant sur la carte. Elle est caractérisée par
+une position, une vitesse de déplacement. Elle possède différents types de compor-
+tements comme l’action de se regrouper, de fuir les inondations. Ces actions sont
+contraintes au champ de détection qui permet à la population de s’informer sur
+l’état de l’environnement proche, le nombre et la position des populations proches.
 
-SETUP permet d'initialise le model. Les élévations sont stockées dans les patches et l'inondation est colorée de manière appropriée en bleu et le niveau de l'eau est à la normale donc il ne peut pas y avoir de terre inondées dés le début de la simulation. Les bateaux possèdant chacun un radar sont placés aléatoirement sur la mer en dehors du continent (de la terre).
-Les phares sont placées aléatoirement sur les côtes de la carte et la populations est aussi placée aléatoirement sur le continent plus ou moins éloignée des phares. 
-
-SETUP initializes the model. Elevations are stored in the patches, and the flood is appropriately colored in blue. The water level is set to normal, so no land is flooded at the beginning of the simulation. Boats, each equipped with a radar, are placed randomly on the sea, outside the continent (land).
-Lighthouses are randomly placed along the coasts of the map, and the population is also randomly distributed on the continent, at varying distances from the lighthouses.
-
-Go permet de lancer la simulation. L'élévation des eaux commencent dans chaque partie du continent et les inondations débutent. La popuation effrayée par le début de l'élévation des eaux, les personnes se dirige vers les différents phares qui se situent à proximité de leur position. Les bateaux transitent par les phares pour sauvé les personnes qui se sont rassembler. Les personnes qui ne sont pas sécouru à temps, décédent au contact de l'eau car ils se sont noyées. L'élévations des eaux porgressent de plus en plus et une fois que toute le contient est inondé la simulation s'arrête.
-
-GO starts the simulation. The water levels begin to rise in different parts of the continent, and the floods begin. The population, frightened by the rising waters, heads towards the nearby lighthouses. The boats navigate through the lighthouses to rescue the people who have gathered there. Those who are not rescued in time die from drowning upon contact with the water. The water levels continue to rise, and once the entire continent is flooded, the simulation ends.
-
-Il existe plusieurs métriques tels que "nombre de morts", "hauteur de l'eau" et "sauvés" qui représentent le nombre de personnes qui sont morts, la hauteaur que l'eau a atteint et le nombre de personnes sauvés. 
-
-There are several metrics such as "number of deaths," "water level," and "rescued," which represent the number of people who have died, the height the water has reached, and the number of people rescued.
-
-Plusieurs sliders ont été crée que l'on peut régler à l'initialisation : nb-boat, nb-population, distance-boat, boat-travel distance.
-
-Several sliders have been created that can be adjusted during initialization: nb-boat, nb-population, distance-boat, and boat-travel distance.
-
-Ces sliders permettent de régler le nombre de bateaux "nb-boat" qui vont participer aux sauvetages (minimum 1 et maximum 10), le nombre de population "nb-population (minimum 50 et maximum 500), la distance que les bateaux peuvent atteindre pour récuperer les personnes qui se sont rassemblèes "distance-boat" (minimum 2 et maximum 10) et pour finir la distance que le bateau parcours pour se déplacer "boat-travel distance" (minimum 2 et maximum 10).
-
-These sliders allow you to adjust the number of boats "nb-boat" that will participate in the rescues (minimum 1 and maximum 10), the number of people "nb-population" (minimum 50 and maximum 500), the distance that the boats can reach to collect the people who have gathered "distance-boat" (minimum 2 and maximum 10), and finally, the distance the boat travels to move "boat-travel distance" (minimum 2 and maximum 10).
-
-Il y a aussi plusieurs graphiques qui ont été crée : Elevation permet suivre la montée de l'eau (l'inondation), Evolution nombre de morts permet de voir le nombre de personnes qui sont noyées dans la simulation, Niveau de l'eau qui montre le niveau que l'eau a atteint dans la carte, Evolution du nombre de personnes sauvées nous permet de voir le nombre de personnes qui ont été secouru par les bateaux.
-Ces graphiques permettent de mieux suivrent l'avancement de la simuation et voir ce qu'il se passe. 
-
-There are also several graphs that have been created: Elevation allows you to track the rise of the water (flooding), Evolution of the number of deaths shows the number of people who have drowned in the simulation, Water level shows the level the water has reached on the map, and Evolution of the number of people rescued allows us to see how many people have been rescued by the boats.
-
-SETUP initializes the model.  Elevations are stored in the patches and they are colored appropriately. Also, the two floods are started off on the coasts.
-
-GO runs the model.  When the floods cannot advance any more with the given height of the water, the water level is raised a little bit.  Eventually, when the whole continent has been flooded and the continental divide has been found, the model stops automatically.
-
-## THINGS TO NOTICE
-
-The two floods move at different rates.
-
-The first 100 meters of flood covers more land than the last 100 meters.  What about in between?
-
-Land that's flooded later isn't necessarily higher elevation. (Why?)
+## Pathfinding
 
 Plusieurs stratégie de création d’itinéraires pour les bateaux sont envisagées.
 Nous avons pensé à une heuristique locale qui privilégie les foyers de populations les
 plus peuplés à l’instantée.
 Pour modéliser la carte sous forme de graphe simplifié, nous allons assigner à la
-carte, lors de l’initialisation des phares qui feront office de sommets. Des stratégies d’itinéraires globales sont proposés comme l’algorithme de Dijkstra.
+carte, lors de l’initialisation des phares qui feront office de sommets. Des stratégies
+d’itinéraires globales sont proposés comme l’algorithme de Dijkstra ou A*.
+
+## Statistiques et mesures
 
 Nous pouvons grâce à cette simulation mesurer le pourcentage de la popula-
 tion qui s’est noyé, le pourcentage de la carte immmergée. Ces statistiques peuvent
@@ -832,64 +1042,34 @@ comparer leurs résultats. Il est intéressant de comparer des heuristiques plus
 cales effectuées par les bateaux et les comparer à des stratégies qui nécessitent une
 connaissance globale de la carte comme Dijkstra et déterminer si ces dernières sont
 adéquates pour notre tâche.
+Paramètres globaux envisagés :
+— nombre de bateaux
+— vitesse montée des eaux
+— densité de population
+Les agents, leurs caractéristiques et leurs paramètres :
+— bateau (se déplace sur l’eau et effectue l’embarquement des populations ) :
+— vitesse du bateau
+— stratégie de parcours
+— position
+— population (disséminés sur la map, possèdent la capacité de se regrouper et
+de se déplacer)
+— vitesse de déplacement
+— position
+Environnement :
+— sol
+— eau
+Données : carte géographique (map), sous forme de matrices d’élévations
+Statistiques
+— nombre de noyés
+— pourcentage de la carte immergée
+Evaluation
+— Stratégie de parcours du bateau (heuristique)
+— Mode de communication populations / bateau
 
-## THINGS TO TRY
 
-Use the speed slider to slow the model down and watch what happens in more detail.
+## utilisation 
 
-Increase the patch-size to get a better view of the action.  (Because the elevation data assumes specific dimensions, you can't change the number of patches in the model.)
 
-## EXTENDING THE MODEL
-
-Make a slider to control how much water-height changes when the flooding at a given water-height has stopped.
-
-Make a slider for controlling how many colors from FLOODED-GROUND-COLOR-LIST get used.  With a smaller number, the flooded land's elevation is easier to see.  With a larger number, the progression of flooding is easier to see.
-
-Is there a difference if `neighbors` is used instead of `neighbors4`? Make a switch to toggle between the two options and compare them.
-
-Try the model with a more detailed dataset.
-
-Allow the user of the model to specify different bodies of water than the Atlantic and Pacific oceans.  For example, it'd be interesting to see which water flows into the Gulf of Mexico and which flows into the Atlantic.
-
-Allow the user to import maps of other parts of the world.
-
-## NETLOGO FEATURES
-
-Note the use of turtles to represent the edges of the flood.  Instead of asking all the patches to find the ones on each edge, we only need to ask the turtles to act.  Since at any given moment only a few patches are at a flood edge, this is much faster.
-
-Note the used of `foreach` on multiple lists to initialize the elevation data in the patches.
-
-## RELATED MODELS
-
-Grand Canyon
-
-## CREDITS AND REFERENCES
-
-This model was inspired by Brian Hayes' article "Dividing the Continent" in American Scientist, Volume 88, Number 6, page 481.  An online version can be found here: https://www.jstor.org/stable/27858114
-
-Thanks to Josh Unterman for his work on this model.
-
-## HOW TO CITE
-
-If you mention this model or the NetLogo software in a publication, we ask that you include the citations below.
-
-For the model itself:
-
-* Wilensky, U. (2007).  NetLogo Continental Divide model.  http://ccl.northwestern.edu/netlogo/models/ContinentalDivide.  Center for Connected Learning and Computer-Based Modeling, Northwestern University, Evanston, IL.
-
-Please cite the NetLogo software as:
-
-* Wilensky, U. (1999). NetLogo. http://ccl.northwestern.edu/netlogo/. Center for Connected Learning and Computer-Based Modeling, Northwestern University, Evanston, IL.
-
-## COPYRIGHT AND LICENSE
-
-Copyright 2007 Uri Wilensky.
-
-![CC BY-NC-SA 3.0](http://ccl.northwestern.edu/images/creativecommons/byncsa.png)
-
-This work is licensed under the Creative Commons Attribution-NonCommercial-ShareAlike 3.0 License.  To view a copy of this license, visit https://creativecommons.org/licenses/by-nc-sa/3.0/ or send a letter to Creative Commons, 559 Nathan Abbott Way, Stanford, California 94305, USA.
-
-Commercial licenses are also available. To inquire about commercial licenses, please contact Uri Wilensky at uri@northwestern.edu.
 
 <!-- 2007 -->
 @#$#@#$#@
