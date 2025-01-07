@@ -421,18 +421,37 @@ to embark [lh]
   show "Embark"
   set pops (turtle-set pops t_pops)
   show pops
+  set label label + count pops
     ask pops [
       ;move-to myself
-      die
       set saved-count saved-count + 1
+      die
+
 
   ]
     ask lh [
       set pops []
       update_lighthouse_size self
+      die
     ]
+    respawn_lighthouse
   ]
-  set label count pops
+
+end
+
+
+to respawn_lighthouse
+  ask [patch-here] of one-of contours [
+    sprout-lighthouses 1 [
+    set color red
+    set size 5
+    move-to one-of contours
+    set linked? False
+    set pops []
+    set label 0
+    set label-color white
+  ]]
+
 end
 
 
@@ -624,9 +643,9 @@ SLIDER
 363
 distance-boat
 distance-boat
-2
+1
 10
-5.0
+1.0
 1
 1
 NIL
@@ -730,7 +749,27 @@ HORIZONTAL
 @#$#@#$#@
 ## WHAT IS IT?
 
-This model demonstrates one way to locate a continental divide.  A continental divide separates a continent into two regions based on two bodies of water.  Rain in one region flows into one body of water and rain in the other region flows into the other.
+
+
+Dans le cadre du module SMASE (Systèmes Multi-Agents et Systèmes
+Embarqué), ce document prsésente le projet Déluge, une simulation centrée
+sur un scénario de montée des eaux et de sauvetages en situation de crise.
+Le terrain est modélisé à partir d’une carte (Amerique Du Nord) d’élévation représentant des zones terrestres et aquatiques, où les inondations progressent de manière uniforme.
+
+As part of the SMASE module (Multi-Agent Systems and Embedded Sys-
+tems), this document presents the Déluge project, a simulation focused on a
+scenario of rising water levels and crisis rescue operations.
+The ground is modeled based on an elevation map (map of North America) representing land and aquatic zones, where floods progress uniformly.
+
+## HOW IT WORKS
+
+La simulation démarre à partir d’une map basée sur le globe terrestre. Cette
+map représente ainsi les continents avec leurs reliefs et les différents océans. Des
+populations sont présentes sur ces différentes zones terrestre. Elles sont capables de
+se déplacer afin de se rassembler au niveau des phares placés sur les côtes de la carte et échapper aux inondations. Plusieurs bateaux possèdant chacun un radar, sont placés sur cette map et a comme objectif de sauver un maximum de personnes. Les bateaux transitent par les phares afin de maximiser le sauvetage des personnes regroupées autour de ces points stratégiques. Le bateau se déplacera selon une stratégie de déplacement (heuristique).
+
+
+The simulation begins with a map based on the terrestrial globe. This map represents continents with their topography and the various oceans. Populations are distributed across these land areas and can move to gather around lighthouses placed on the map to escape the floods. Several boats having severals radar are positioned on the coasts on the map with the objective of rescuing as many people as possible. The boats navigate through the lighthouses to maximize the rescue of people gathered at these strategic points. The boats' movements are guided by a displacement strategy (heuristic).This model demonstrates one way to locate a continental divide.  A continental divide separates a continent into two regions based on two bodies of water.  Rain in one region flows into one body of water and rain in the other region flows into the other.
 
 In the example data, the continent is North America and the two bodies of water used to calculate the divide are the Pacific and Atlantic oceans.
 
@@ -739,6 +778,34 @@ In the example data, the continent is North America and the two bodies of water 
 The model is initialized with an elevation map.  Then both oceans systematically rise, bit by bit.  The two floods run towards each other over the continent and eventually crash.  The continental divide is precisely where the two floods collide.
 
 ## HOW TO USE IT
+
+
+SETUP permet d'initialise le model. Les élévations sont stockées dans les patches et l'inondation est colorée de manière appropriée en bleu et le niveau de l'eau est à la normale donc il ne peut pas y avoir de terre inondées dés le début de la simulation. Les bateaux possèdant chacun un radar sont placés aléatoirement sur la mer en dehors du continent (de la terre).
+Les phares sont placées aléatoirement sur les côtes de la carte et la populations est aussi placée aléatoirement sur le continent plus ou moins éloignée des phares. 
+
+SETUP initializes the model. Elevations are stored in the patches, and the flood is appropriately colored in blue. The water level is set to normal, so no land is flooded at the beginning of the simulation. Boats, each equipped with a radar, are placed randomly on the sea, outside the continent (land).
+Lighthouses are randomly placed along the coasts of the map, and the population is also randomly distributed on the continent, at varying distances from the lighthouses.
+
+Go permet de lancer la simulation. L'élévation des eaux commencent dans chaque partie du continent et les inondations débutent. La popuation effrayée par le début de l'élévation des eaux, les personnes se dirige vers les différents phares qui se situent à proximité de leur position. Les bateaux transitent par les phares pour sauvé les personnes qui se sont rassembler. Les personnes qui ne sont pas sécouru à temps, décédent au contact de l'eau car ils se sont noyées. L'élévations des eaux porgressent de plus en plus et une fois que toute le contient est inondé la simulation s'arrête.
+
+GO starts the simulation. The water levels begin to rise in different parts of the continent, and the floods begin. The population, frightened by the rising waters, heads towards the nearby lighthouses. The boats navigate through the lighthouses to rescue the people who have gathered there. Those who are not rescued in time die from drowning upon contact with the water. The water levels continue to rise, and once the entire continent is flooded, the simulation ends.
+
+Il existe plusieurs métriques tels que "nombre de morts", "hauteur de l'eau" et "sauvés" qui représentent le nombre de personnes qui sont morts, la hauteaur que l'eau a atteint et le nombre de personnes sauvés. 
+
+There are several metrics such as "number of deaths," "water level," and "rescued," which represent the number of people who have died, the height the water has reached, and the number of people rescued.
+
+Plusieurs sliders ont été crée que l'on peut régler à l'initialisation : nb-boat, nb-population, distance-boat, boat-travel distance.
+
+Several sliders have been created that can be adjusted during initialization: nb-boat, nb-population, distance-boat, and boat-travel distance.
+
+Ces sliders permettent de régler le nombre de bateaux "nb-boat" qui vont participer aux sauvetages (minimum 1 et maximum 10), le nombre de population "nb-population (minimum 50 et maximum 500), la distance que les bateaux peuvent atteindre pour récuperer les personnes qui se sont rassemblèes "distance-boat" (minimum 2 et maximum 10) et pour finir la distance que le bateau parcours pour se déplacer "boat-travel distance" (minimum 2 et maximum 10).
+
+These sliders allow you to adjust the number of boats "nb-boat" that will participate in the rescues (minimum 1 and maximum 10), the number of people "nb-population" (minimum 50 and maximum 500), the distance that the boats can reach to collect the people who have gathered "distance-boat" (minimum 2 and maximum 10), and finally, the distance the boat travels to move "boat-travel distance" (minimum 2 and maximum 10).
+
+Il y a aussi plusieurs graphiques qui ont été crée : Elevation permet suivre la montée de l'eau (l'inondation), Evolution nombre de morts permet de voir le nombre de personnes qui sont noyées dans la simulation, Niveau de l'eau qui montre le niveau que l'eau a atteint dans la carte, Evolution du nombre de personnes sauvées nous permet de voir le nombre de personnes qui ont été secouru par les bateaux.
+Ces graphiques permettent de mieux suivrent l'avancement de la simuation et voir ce qu'il se passe. 
+
+There are also several graphs that have been created: Elevation allows you to track the rise of the water (flooding), Evolution of the number of deaths shows the number of people who have drowned in the simulation, Water level shows the level the water has reached on the map, and Evolution of the number of people rescued allows us to see how many people have been rescued by the boats.
 
 SETUP initializes the model.  Elevations are stored in the patches and they are colored appropriately. Also, the two floods are started off on the coasts.
 
@@ -751,6 +818,20 @@ The two floods move at different rates.
 The first 100 meters of flood covers more land than the last 100 meters.  What about in between?
 
 Land that's flooded later isn't necessarily higher elevation. (Why?)
+
+Plusieurs stratégie de création d’itinéraires pour les bateaux sont envisagées.
+Nous avons pensé à une heuristique locale qui privilégie les foyers de populations les
+plus peuplés à l’instantée.
+Pour modéliser la carte sous forme de graphe simplifié, nous allons assigner à la
+carte, lors de l’initialisation des phares qui feront office de sommets. Des stratégies d’itinéraires globales sont proposés comme l’algorithme de Dijkstra.
+
+Nous pouvons grâce à cette simulation mesurer le pourcentage de la popula-
+tion qui s’est noyé, le pourcentage de la carte immmergée. Ces statistiques peuvent
+être relevées pour différentes stratégies de pathfinding qui ont été utilisés et ainsi
+comparer leurs résultats. Il est intéressant de comparer des heuristiques plus lo-
+cales effectuées par les bateaux et les comparer à des stratégies qui nécessitent une
+connaissance globale de la carte comme Dijkstra et déterminer si ces dernières sont
+adéquates pour notre tâche.
 
 ## THINGS TO TRY
 
