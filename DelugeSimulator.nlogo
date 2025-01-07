@@ -223,10 +223,12 @@ to dep
   ;; Avancer d'une unité
    if any? my-links
   [let nearest nearest-lighthouse my-links
-  show "nearest : "
+    if ([label] of nearest > 0)
+    [show "nearest : "
   show nearest
   face nearest
-  embark nearest]
+  embark nearest]]
+
   fd boat-travel-distance
 end
 
@@ -490,6 +492,13 @@ to-report nearest-lighthouse [l]
   let nearest min-one-of lh [distance myself]
   ;;let nearest min-one-of [other-end] of l [distance [other-end] of l]
   report nearest
+
+end
+
+to-report most-populated-lighthouse [l]
+  let lh turtle-set [other-end] of l
+  let most-pop max-one-of lh [label]
+  report most-pop
 
 end
 
