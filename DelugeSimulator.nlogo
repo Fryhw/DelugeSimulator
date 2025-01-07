@@ -19,7 +19,6 @@ globals [
   ocean-color divide-color
   initial-ground-color flooded-ground-colors
   total-elevation
-  notVisited    ;; Ensemble des patches non visités pour Dijkstra
   solved
   search
 ]
