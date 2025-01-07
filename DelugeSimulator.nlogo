@@ -1,8 +1,14 @@
 patches-own [
   elevation
-  dist        ;; Distance minimale calculée par Dijkstra
-  previous    ;; Patch précédent dans le chemin optimal
-  visited?    ;; Si le patch a été visité ou non
+  waterlvl
+  n
+  step
+  recovered
+  isexit
+  road
+  path
+  savedvalue
+
 ]
 
 globals [
@@ -14,6 +20,8 @@ globals [
   initial-ground-color flooded-ground-colors
   total-elevation
   notVisited    ;; Ensemble des patches non visités pour Dijkstra
+  solved
+  search
 ]
 
 
@@ -34,17 +42,21 @@ to setup
   clear-all
   set saved-count 0
   set-default-shape turtles "circle"
-
+  reset
   setup-colors
   setup-elevations
   setup-floods
   color-world
   reset-ticks
-
+  set search false
+  
+  ;if search = FALSE [
+  ;  reset
+  ;  buildmaze
+  ;]
   ask patches [
-    set dist 99999
-    set visited? false
-    set previous nobody
+
+    set waterlvl elevation
   ]
 
   ;; Création des populations
@@ -73,37 +85,6 @@ to setup
 end
 
 
-to calculate-dijkstra [source]
-  ;; Cette partie doit être exécutée par l'observateur uniquement, donc on déplace l'action ask patches ici.
-  ask patches [
-    set dist 99999
-    set visited? false
-    set previous nobody
-  ]
-  ask source [
-    set dist 0
-  ]
-  set notVisited patches
-
-  while [any? notVisited] [
-    let current min-one-of notVisited [dist]
-    if current = nobody [ stop ]
-
-    ask current [
-      set visited? true
-      ask neighbors4 with [not visited?] [
-        let elevation-cost ifelse-value ([elevation] of myself - elevation < 0) [0] [[elevation] of myself - elevation]
-        let newDist ([dist] of myself + 1 + elevation-cost)
-        if newDist < dist [
-          set dist newDist
-          set previous myself
-        ]
-      ]
-    ]
-    set notVisited notVisited with [self != current]
-  ]
-end
-
 
 
 to move-to-nearest-population
@@ -114,23 +95,8 @@ to move-to-nearest-population
       let nearest-one min-one-of near-neighbors [distance myself]
       ;; Récupérer le patch où se trouve ce voisin
       let target-patch [patch-here] of nearest-one
-      ;; Calculer le chemin avec Dijkstra
-      calculate-dijkstra target-patch
-      ;; Suivre le chemin
-      follow-dijkstra-path
+
     ]
-  ]
-end
-
-
-
-
-to follow-dijkstra-path  ;; Utilisé par les bateaux
-  let current patch-here
-  while [current != nobody and [previous] of current != nobody] [
-    let next-patch [previous] of current
-    move-to next-patch
-    set current next-patch
   ]
 end
 
@@ -157,55 +123,160 @@ end
 ;;;
 
 to go
+
   if not any? turtles [ stop ]
   set raise-water? true
-
   ask contours [ flood-contours ]
   ask populations [ flood-people ]
+  
+  if not any? patches with [pcolor = orange or pcolor = red or pcolor = lime][
+  reset
+  buildmaze
+]
+  while [search = TRUE ] [solve]
+  bringback
+
   ask bateaux [
-    ;;move-to-nearest-population
+    orienter-et-avancer-vers-blocs
     check-and-save
-    bat
-    tofar
+    ;tofar
+    
   ]
+  ;move-to-nearest-population
+    ;; check-and-save
+    ;; bat
+  ;;  
 
   if raise-water? [
     set water-height water-height + 1
-  ]
+    ask patches with [ waterlvl > 0 ] [set waterlvl waterlvl - 1]
+  ]  
   tick
+end  
+
+
+to bringback
+  ask patches with [pcolor = black]
+  [set pcolor savedvalue]
 end
 
 
-to check-and-save
-  ;; Demander à l'observer de vérifier les tortues proches du bateau
-  ask turtles with [distance myself <= distance-boat AND breed = populations ] [  ;; Vérifier les tortues dans un rayon de 2 blocs du bateau
-    set saved-count saved-count + 1
-    die  ;; Les tuer
-      ;; Ajouter au compteur de gens sauvés
+to buildmaze
+  set search TRUE
+  ;ask [patch-here] of one-of contours [set road 3
+  ;set pcolor red]
+  ask one-of patches with [road = 1] [set road 3
+  set pcolor red]
+  ask turtles with [breed = bateaux][
+    
+  ask patch-here [set road 4
+      ;set pcolor lime
+    ]
   ]
 end
 
-to tofar  ;; turtle procedure
-  ;; Si la tortue est près du bord gauche
-if xcor < 2 [
+to reset
+  set solved FALSE
+  ask patches [set n 0
+    set savedvalue pcolor
+               set road 1
+               set step 0
+               set plabel ""
+               set recovered FALSE
+              ]
+  ask patches with [waterlvl > 0][set road 2]
+  ask patches with [road = 1][
+    if any? patches in-radius 1 with [road = 2][
+      set road 2]]
+end
 
- setxy 237 ycor  ;; Déplacer la tortue à la coordonnée (237, ycor)
- fd 2
+
+to orienter-et-avancer-vers-blocs
+  let bloc-cible 0
+  ;; Si un bloc orange est à proximité (dans un rayon de 10 patches)
+  if any? patches in-radius 4 with [pcolor = orange or pcolor = red] [
+    set bloc-cible min-one-of patches in-radius 4 with [pcolor = orange or pcolor = red] [distance myself]
+    
+    ;; La tortue s'oriente vers le bloc orange le plus proche
+    face bloc-cible
+    
+    ;; Elle avance vers le bloc
+    fd 2
+    
+    ;; Supprime les blocs trop proches (distance < 1)
+    ask patches in-radius 2 with [pcolor = orange or pcolor = lime or pcolor = red] [
+      set pcolor savedvalue
+    ]
+  ]
+end
+
+
+to recover-path
+  ifelse any? patches with [road = 4 and any? neighbors4 with [road = 3] ][
+    set search FALSE
+    stop
+  ] [
+   ask patches with [road = 4 and recovered = FALSE] [
+     if any? neighbors4 with [road = 5] [
+      let tset neighbors4 with [road = 5]
+      ask min-one-of tset [step] [set road 4
+        set path 1
+        set pcolor orange]
+      set recovered TRUE
+      
+     ]
+   ]
+    
+  ]
+end
+
+to solve
+  ifelse solved [
+    recover-path
+  ] [
+      ask patches with [road = 1][
+        if any? neighbors4 with [road = 3]  or
+           any? neighbors4 with [road = 5] [
+             set road 5
+             let laststep [step] of one-of neighbors4 with [road = 5 or
+                                                            road = 3]
+             set step laststep + 1
+           ]
+      ]
+      ask patches with [road = 4] [
+        if any? neighbors4 with [road = 5 ] [
+          set solved TRUE
+        ]
+      ]
+  ]
+end
+
+
+
+
+to check-and-save;;Check if people arround the boat (with an distnace) if yes kill them and add point to saved
+  ask turtles with [distance myself <= distance-boat AND breed = populations ] [
+    set saved-count saved-count + 1
+    die
+  ]
+end
+
+to tofar ;; If the boat go to far make it travel across the map
+if xcor < 2 [
+ setxy 237 ycor
+    fd 2
 ]
-  ;; Si la tortue est près du bord droit
   if xcor > 236 [
     setxy 1 ycor
     fd 2
   ]
-  ;; Si la tortue est près du bord inférieur
   if ycor < 2 [
     setxy xcor 116
-    fd 2
+    fd 1
   ]
-  ;; Si la tortue est près du bord supérieur
   if ycor > 117 [
     setxy xcor 2
-    fd 2
+    fd 1
   ]
 end
 
@@ -214,18 +285,18 @@ end
 
 to bat
   ask turtles with [breed = bateaux] [dep]
-
 end
 
 to dep
   ;; Chercher des tortues "contours" dans un rayon de 9 cases
-  let danger-neighbors turtles with [breed != populations and distance myself < 2 and self != myself]
-  let save-neighbors turtles with [breed = populations and distance myself < 5 and self != myself]
+  let danger-neighbors turtles with [breed != populations and distance myself < 4 and self != myself]
+  let save-neighbors turtles with [breed = populations and distance myself < 6 and self != myself and distance myself > 3]
 
   ;; Si des tortues contours sont proches, on fait une rotation pour les éviter
   if any? danger-neighbors [
-    let escape-heading (heading + 180 + random 60 - 30)  ;; Tourner dans la direction opposée + un petit random pour varier
+    let escape-heading (heading + 180 + random 30 - 20)  ;; Tourner dans la direction opposée + un petit random pour varier
     set heading escape-heading
+    fd boat-travel-distance + 2
   ]
   if (not any? danger-neighbors) and any? save-neighbors [
     let target one-of save-neighbors  ;; Choisir un voisin de sauvetage au hasard
@@ -249,7 +320,7 @@ to flood-people  ;; turtle procedure
     ]
 end
 
-to avoid  ;; turtle procedure
+to avoid  ;; If people touch water they died
   let my-color color
   let unflooded-neighbors neighbors4 with [shade-of? pcolor initial-ground-color and
                                            not any? turtles-here with [color = my-color]]
