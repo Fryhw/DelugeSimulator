@@ -7,6 +7,6 @@ It will allow you to get the .netlogo file. Once obtained, launch the NetLogo en
 
 ## Contribution
 mail : noe.mention.etu@univ-lemans.fr
-mail : matteo.rullier.etu@univ-lemans.fr
+mail : mateo.rullier.etu@univ-lemans.fr
 
 ## Licence
